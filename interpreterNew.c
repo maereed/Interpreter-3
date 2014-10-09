@@ -54,15 +54,19 @@ static void StoreWord(int data, int addr)
   mem[addr / 4] = data;
 }
 
-static void dataDependencies(int value, int *readCount,int *writeData){
+static void dataDependencies(int value, int flag, int *readCount,int writeData[8][2]){
+    int i;
+
     //ignore the 0 case
     if(value == 0)
       return;
 
   //traverse through writeData
-  int i;
+  if (flag == 1){
+  }
+
   for (i = 0; i < 8 ; i++){
-    if (value == writeData[i]){
+    if (value == writeData[i][0]){
       readCount[i]++;
       break;
     }
@@ -74,15 +78,17 @@ static void dataDependencies(int value, int *readCount,int *writeData){
 //   printf("write in DD: %d\n", writeData[k]);
 // }
 }
-static void writeDependencies(int wb, int count, int *writeData){
-  // int i = count % 8;
-  // writeData[i] = wb;
-  //   printf("write: %d\n", writeData[i]);
+static void writeDependencies(int wb, int flag, int count, int *writeData){
   int i;
-  for(i = 7; i >=1; i--){
-    writeData[i] = writeData[i-1];
+
+  if (flag == 1){
+
+  }else{
+    for(i = 7; i >=1; i--){
+      writeData[i][0] = writeData[i-1][0];
+    }
+    writeData[0][0]=wb;
   }
-  writeData[0]=wb;
 }
 
 static void Interpret(int start)
@@ -99,9 +105,10 @@ static void Interpret(int start)
   reg[28] = 0x10008000;  // gp
   reg[29] = 0x10000000 + MEMSIZE;  // sp
   int readCount[8] = {0}; //For each instruction read
-  int writeData[8] = {0}; //Stores the write intructions
+  int writeData[8][2] = {0}; //Stores the write intructions
   memcpy(&readCount, &(int [8]){ 0 }, sizeof readCount);
-  memcpy(&writeData, &(int [8]){ 0 }, sizeof writeData);
+  memcpy(&writeData, &(int [8][2]){ 0 }, sizeof writeData);
+  int flag = 0;
 
   while (cont) {
     count++;
@@ -124,8 +131,8 @@ static void Interpret(int start)
       case 0x00:
         switch (funct) {
           case 0x00:  reg[rd] = reg[rs] << shamt;
-                      dataDependencies(rs, readCount, writeData);
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
                       if ( rs == 0 )
@@ -134,8 +141,8 @@ static void Interpret(int start)
 
 
           case 0x03:  reg[rd] = reg[rs] >> (signed)shamt;
-                      dataDependencies(rs, readCount, writeData);
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
                       if ( rs == 0 )
@@ -144,8 +151,8 @@ static void Interpret(int start)
 
 
           case 0x08:  pc = reg[rs];
-                      dataDependencies(rs, readCount, writeData);
-                      writeDependencies(0, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      writeDependencies(0, 0,count, writeData);
                       cycleCount += 2;
                       registerAccess++;
                       if ( rs == 0 )
@@ -156,7 +163,8 @@ static void Interpret(int start)
           case 0x10:  reg[rd] = hi;
                       // NEED TO CHECK FOR READ DEPENDENCY (HI)
                       // JUST ASSIGN IT AN ARBITRARY NUMERICAL VALUE
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(33, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
           break; /* mfhi */
@@ -164,7 +172,8 @@ static void Interpret(int start)
 
           case 0x12:  reg[rd] = lo;
                       // SAME THING FOR LO AS FOR HI
-                      writeDependencies(rd, count, writeData);
+                      writeDependencies(32, 0, count, writeData);
+                      writeDependencies(rd, 0, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
           break;/* mflo */
@@ -173,19 +182,20 @@ static void Interpret(int start)
           case 0x18:  wide = reg[rs];
                       if ( rs == 0 )
                         zeroCount++;
-                      dataDependencies(rs, readCount, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
                       wide *= reg[rt];
-                      dataDependencies(rt, readCount, writeData);
+                      dataDependencies(rt, 0, readCount, writeData);
                       if ( rt == 0 )
                         zeroCount++;
                       lo = wide & 0xffffffff;
                       hi = wide >> 32;
                       cycleCount += 32;
                       registerAccess += 2;
-                      // YOU WRITE TO BOTH HI AND LO HERE
-                      // YOU NEED SOME WAY TO TRACK BOTH
+                      //  WRITE TO BOTH HI AND LO HERE
+                      //  NEED SOME WAY TO TRACK BOTH
                       // NUMBERS AT THIS ONE INST
-                      writeDependencies(33, count, writeData);
+                      writeDependencies(32, 0, count, writeData);
+                      writeDependencies(33, 1, count, writeData);
           break;/* mult */
 
 
@@ -194,8 +204,8 @@ static void Interpret(int start)
                         cont = 0;
                       }else {
                         lo = reg[rs] / reg[rt];
-                        dataDependencies(rs, readCount, writeData);
-                        dataDependencies(rt, readCount, writeData);
+                        dataDependencies(rs, 0, readCount, writeData);
+                        dataDependencies(rt, 0, readCount, writeData);
                         hi = reg[rs] % reg[rt];
                         // BURTSCHER SAID TO ONLY COUNT THE REGISTERS
                         // ONCE. tHEY ARE ONLY READ TWICE HERE BY THE
@@ -203,7 +213,8 @@ static void Interpret(int start)
                         cycleCount += 32;
                         registerAccess += 2;
                         // AGAIN, THIS INST WRITES TWO REGISTERS (HI/LO)
-                        writeDependencies(33, count, writeData);
+                        writeDependencies(40, 0, count, writeData);
+                        writeDependencies(41, 1, count, writeData);
                         if ( rs == 0)
                           zeroCount +=1;
                       }
@@ -220,9 +231,9 @@ static void Interpret(int start)
                         zeroCount++;
                       if ( rt == 0)
                         zeroCount++;
-                      dataDependencies(rs, readCount, writeData);
-                      dataDependencies(rt, readCount, writeData);
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      dataDependencies(rt, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
           break;/* addu */
 
 
@@ -233,9 +244,9 @@ static void Interpret(int start)
                         zeroCount++;
                       if  ( rt == 0)
                         zeroCount++;
-                      dataDependencies(rs, readCount, writeData);
-                      dataDependencies(rt, readCount, writeData);
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      dataDependencies(rt, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
           break;/* subu */
 
           case 0x2a:  if(reg[rs] < reg[rt]){
@@ -243,9 +254,9 @@ static void Interpret(int start)
                       }else{
                         reg[rd]=0;
                       }
-                      dataDependencies(rs, readCount, writeData);
-                      dataDependencies(rt, readCount, writeData);
-                      writeDependencies(rd, count, writeData);
+                      dataDependencies(rs, 0, readCount, writeData);
+                      dataDependencies(rt, 0, readCount, writeData);
+                      writeDependencies(rd, 0, count, writeData);
                       if ( rs == 0 )
                         zeroCount++;
                       if  ( rt == 0)
@@ -262,13 +273,13 @@ static void Interpret(int start)
 
       case 0x02:  pc = (pc & 0xf0000000) + addr * 4;
                   cycleCount += 2;
-                  writeDependencies(0, count, writeData);
+                  writeDependencies(0, 0,count, writeData);
       break;/* j */
 
 
       case 0x03: reg[31] = pc; pc = (pc & 0xf0000000) + addr * 4;
                  cycleCount += 2;
-                 writeDependencies(31, count, writeData);
+                 writeDependencies(31, 0, count, writeData);
       break;/* jal */
 
 
@@ -279,15 +290,15 @@ static void Interpret(int start)
                   else{
                     cycleCount++; //not taken
                   }
-                  dataDependencies(rs, readCount, writeData);
-                  dataDependencies(rt, readCount, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  dataDependencies(rt, 0, readCount, writeData);
                   branchCount++;
                   registerAccess += 2;
                   if ( rs == 0 )
                     zeroCount ++;
                   if ( rt == 0)
                     zeroCount++;
-                  writeDependencies(0, count, writeData);
+                  writeDependencies(0, 0,count, writeData);
       break;/* beq */
 
 
@@ -298,15 +309,15 @@ static void Interpret(int start)
                   else{
                     cycleCount++; //not taken
                   }
-                  dataDependencies(rs, readCount, writeData);
-                  dataDependencies(rt, readCount, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  dataDependencies(rt, 0, readCount, writeData);
                   branchCount++;
                   registerAccess += 2;
                   if ( rs == 0 )
                     zeroCount++;
                   if ( rt == 0)
                     zeroCount++;
-                  writeDependencies(0, count, writeData);
+                  writeDependencies(0,  0,count, writeData);
       break;/* bne */
 
 
@@ -315,8 +326,8 @@ static void Interpret(int start)
                   registerAccess++;
                   if ( rs == 0 )
                     zeroCount++;
-                  dataDependencies(rs, readCount, writeData);
-                  writeDependencies(rt, count, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  writeDependencies(rt, 0, count, writeData);
       break;/* addiu */
 
 
@@ -325,14 +336,14 @@ static void Interpret(int start)
                   if ( rs == 0 )
                     zeroCount++;
                   registerAccess++;
-                  dataDependencies(rs, readCount, writeData);
-                  writeDependencies(rt, count, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  writeDependencies(rt, 0, count, writeData);
       break;/* andi */
 
 
       case 0x0f:  reg[rt] = simm << 16;
                   cycleCount++;
-                  writeDependencies(rt, count, writeData);
+                  writeDependencies(rt, 0, count, writeData);
       break;/* lui */
 
 
@@ -342,7 +353,7 @@ static void Interpret(int start)
         switch (addr & 0xf) {
           case 0x00: printf("\n");
                      cycleCount += 2;
-                     writeDependencies(0, count, writeData);
+                     writeDependencies(0, 0,count, writeData);
           break;
 
 
@@ -351,20 +362,20 @@ static void Interpret(int start)
                      if ( rs == 0 )
                        zeroCount++;
                      registerAccess++;
-                     dataDependencies(rs, readCount, writeData);
-                     writeDependencies(0, count, writeData);
+                     dataDependencies(rs, 0, readCount, writeData);
+                     writeDependencies(0, 0,count, writeData);
           break;
 
 
           case 0x05: printf("\n? "); fflush(stdout); scanf("%d", &reg[rt]);
                      cycleCount += 2;
-                     writeDependencies(rt, count, writeData);
+                     writeDependencies(rt, 0, count, writeData);
           break;
 
 
           case 0x0a: cont = 0;
                      cycleCount += 2;
-                     writeDependencies(0, count, writeData);
+                     writeDependencies(0, 0,count, writeData);
           break;
 
 
@@ -379,8 +390,8 @@ static void Interpret(int start)
                   memoryCount++;
                   if ( rs == 0 )
                     zeroCount++;
-                  dataDependencies(rs, readCount, writeData);
-                  writeDependencies(rt, count, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  writeDependencies(rt, 0, count, writeData);
       break;  /* lw */ // call LoadWord function
 
       // instruction counter
@@ -392,9 +403,9 @@ static void Interpret(int start)
                   memoryCount += 1;
                   if ( rs == 0 )
                     zeroCount++;
-                  dataDependencies(rs, readCount, writeData);
-                  dataDependencies(rt, readCount, writeData);
-                  writeDependencies(0, count, writeData);
+                  dataDependencies(rs, 0, readCount, writeData);
+                  dataDependencies(rt, 0, readCount, writeData);
+                  writeDependencies(0, 0,count, writeData);
       break;  /* sw */ // call StoreWord function
 
 
