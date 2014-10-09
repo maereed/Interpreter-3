@@ -200,9 +200,6 @@ static void Interpret(int start)
                         // BURTSCHER SAID TO ONLY COUNT THE REGISTERS
                         // ONCE. tHEY ARE ONLY READ TWICE HERE BY THE
                         // EMULATOR--IN HARDWARE THEY WOULD BE READ ONCE
-                        //
-                        //dataDependencies(rs, readCount, writeData);
-                        //dataDependencies(rt, readCount, writeData);
                         cycleCount += 32;
                         registerAccess += 2;
                         // AGAIN, THIS INST WRITES TWO REGISTERS (HI/LO)
@@ -246,9 +243,6 @@ static void Interpret(int start)
                       }else{
                         reg[rd]=0;
                       }
-                      // CHANGED THIS BECAUSE REGARDLESS OF THE
-                      // RESULT OF THE IF, THESE REGISTERS GET
-                      // ACCESSED/CHANGED
                       dataDependencies(rs, readCount, writeData);
                       dataDependencies(rt, readCount, writeData);
                       writeDependencies(rd, count, writeData);
