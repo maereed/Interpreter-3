@@ -67,12 +67,12 @@ static void dataDependencies(int value, int *readCount,int *writeData){
       break;
     }
   }
-  printf("read: %d\n", readCount[0]);
-  int k;
-  for(k = 0; k < 8; k++){
-    printf("%d\n", k);
-  printf("write in DD: %d\n", writeData[k]);
-}
+  // printf("read: %d\n", readCount[0]);
+  // int k;
+//   for(k = 0; k < 8; k++){
+//     printf("%d\n", k);
+//   printf("write in DD: %d\n", writeData[k]);
+// }
 }
 static void writeDependencies(int wb, int count, int *writeData){
   // int i = count % 8;
@@ -185,7 +185,7 @@ static void Interpret(int start)
                       // YOU WRITE TO BOTH HI AND LO HERE
                       // YOU NEED SOME WAY TO TRACK BOTH
                       // NUMBERS AT THIS ONE INST
-                      writeDependencies(0, count, writeData);
+                      writeDependencies(33, count, writeData);
           break;/* mult */
 
 
@@ -203,7 +203,7 @@ static void Interpret(int start)
                         cycleCount += 32;
                         registerAccess += 2;
                         // AGAIN, THIS INST WRITES TWO REGISTERS (HI/LO)
-                        writeDependencies(0, count, writeData);
+                        writeDependencies(33, count, writeData);
                         if ( rs == 0)
                           zeroCount +=1;
                       }
