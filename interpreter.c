@@ -67,19 +67,19 @@ static void dataDependencies(int value, int *readCount,int *writeData){
       break;
     }
   }
-  printf("read: %d\n", readCount[0]);
-  int k;
-  for(k = 0; k < 8; k++){
-    printf("%d\n", k);
-  printf("write in DD: %d\n", writeData[k]);
-}
+  // printf("read: %d\n", readCount[0]);
+  // int k;
+//   for(k = 0; k < 8; k++){
+//     printf("%d\n", k);
+//   printf("write in DD: %d\n", writeData[k]);
+// }
 }
 static void writeDependencies(int wb, int count, int *writeData){
   // int i = count % 8;
   // writeData[i] = wb;
   //   printf("write: %d\n", writeData[i]);
   int i;
-  for(i = 7; i >=0; i--){
+  for(i = 7; i >=1; i--){
     writeData[i] = writeData[i-1];
   }
   writeData[0]=wb;
@@ -100,6 +100,8 @@ static void Interpret(int start)
   reg[29] = 0x10000000 + MEMSIZE;  // sp
   int readCount[8] = {0}; //For each instruction read
   int writeData[8] = {0}; //Stores the write intructions
+  memcpy(&readCount, &(int [8]){ 0 }, sizeof readCount);
+  memcpy(&writeData, &(int [8]){ 0 }, sizeof writeData);
 
   while (cont) {
     count++;
@@ -152,6 +154,7 @@ static void Interpret(int start)
 
 
           case 0x10:  reg[rd] = hi;
+                      dataDependencies(33, readCount, writeData);
                       writeDependencies(rd, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
@@ -159,6 +162,7 @@ static void Interpret(int start)
 
 
           case 0x12:  reg[rd] = lo;
+                      dataDependencies(33, readCount, writeData);
                       writeDependencies(rd, count, writeData);
                       cycleCount += 2;
                       registerAccess++;
@@ -177,7 +181,7 @@ static void Interpret(int start)
                       hi = wide >> 32;
                       cycleCount += 32;
                       registerAccess += 2;
-                      writeDependencies(0, count, writeData);
+                      writeDependencies(33, count, writeData);
           break;/* mult */
 
 
@@ -191,7 +195,7 @@ static void Interpret(int start)
                         hi = reg[rs] % reg[rt];
                         cycleCount += 32;
                         registerAccess += 2;
-                        writeDependencies(0, count, writeData);
+                        writeDependencies(33, count, writeData);
                         if ( rs == 0)
                           zeroCount +=1;
                       }
@@ -330,7 +334,7 @@ static void Interpret(int start)
         switch (addr & 0xf) {
           case 0x00: printf("\n");
                      cycleCount += 2;
-                     writeDependencies(rt, count, writeData);
+                     writeDependencies(0, count, writeData);
           break;
 
 
@@ -340,7 +344,7 @@ static void Interpret(int start)
                        zeroCount++;
                      registerAccess++;
                      dataDependencies(rs, readCount, writeData);
-                     writeDependencies(rt, count, writeData);
+                     writeDependencies(0, count, writeData);
           break;
 
 
