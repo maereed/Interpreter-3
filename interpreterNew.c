@@ -208,7 +208,7 @@ static void Interpret(int start)
                         dataDependencies(rt, 0, readCount, writeData);
                         hi = reg[rs] % reg[rt];
                         // BURTSCHER SAID TO ONLY COUNT THE REGISTERS
-                        // ONCE. tHEY ARE ONLY READ TWICE HERE BY THE
+                        // ONCE. THEY ARE ONLY READ TWICE HERE BY THE
                         // EMULATOR--IN HARDWARE THEY WOULD BE READ ONCE
                         cycleCount += 32;
                         registerAccess += 2;
